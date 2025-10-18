@@ -1,0 +1,8 @@
+.venv/
+CosyVoice/
+voices/
+huggingface/
+modelscope/
+outputs/
+.updated
+.installed
