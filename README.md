@@ -128,7 +128,21 @@ curl http://localhost:8000/v1/audio/speech \
 
 ### 4. 自然语言控制模式
 
+当请求中包含 `instructions` 参数时，API 会自动使用 instruct 模式（除非显式设置了 `X-Mode` 请求头）：
+
 ```bash
+# 方式一：自动检测（推荐）- 提供 instructions 时会自动使用 instruct 模式
+curl http://localhost:8000/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "tts-1",
+    "input": "今天天气真不错。",
+    "voice": "voice1",
+    "instructions": "请用温柔甜美的声音朗读"
+  }' \
+  --output speech.wav
+
+# 方式二：显式指定模式
 curl http://localhost:8000/v1/audio/speech \
   -H "Content-Type: application/json" \
   -H "X-Mode: instruct" \
@@ -236,7 +250,22 @@ response = requests.post(
     }
 )
 
-# 自然语言控制
+# 自然语言控制（方式一：自动检测模式）
+response = requests.post(
+    "http://localhost:8000/v1/audio/speech",
+    headers={
+        "Content-Type": "application/json",
+        # 不需要设置 X-Mode，提供 instructions 会自动使用 instruct 模式
+    },
+    json={
+        "model": "tts-1",
+        "input": "今天天气真不错。",
+        "voice": "voice1",
+        "instructions": "请用欢快的语调朗读"
+    }
+)
+
+# 自然语言控制（方式二：显式指定模式）
 response = requests.post(
     "http://localhost:8000/v1/audio/speech",
     headers={
@@ -261,7 +290,7 @@ response = requests.post(
 | `model` | string | 否 | - | 模型名称（为了兼容性，会被忽略） |
 | `input` | string | 是 | - | 要合成的文本（最大 4096 字符） |
 | `voice` | string | 是 | - | 声音名称（来自 voices 目录） |
-| `instructions` | string | 否 | null | 指令文本（仅在 instruct 模式下使用） |
+| `instructions` | string | 否 | null | 指令文本（用于自然语言控制，提供此参数时会自动使用 instruct 模式，除非显式设置了 `X-Mode`） |
 | `response_format` | string | 否 | "wav" | 音频格式（wav, flac, pcm, mp3, opus, aac） |
 | `speed` | float | 否 | 1.0 | 语速（0.5-2.0） |
 | `stream_format` | string | 否 | "audio" | 流格式（audio 或 sse，sse 暂不支持） |
@@ -270,7 +299,7 @@ response = requests.post(
 
 | 请求头 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `X-Mode` | string | "zero_shot" | 推理模式：<br>• `zero_shot`: 零样本复刻（3秒极速复刻）<br>• `cross_lingual`: 跨语种复刻<br>• `instruct`: 自然语言控制 |
+| `X-Mode` | string | "zero_shot"<br>（如果提供了 `instructions` 则自动为 "instruct"） | 推理模式：<br>• `zero_shot`: 零样本复刻（3秒极速复刻）<br>• `cross_lingual`: 跨语种复刻<br>• `instruct`: 自然语言控制<br><br>**注意**：如果请求中包含 `instructions` 参数且未设置 `X-Mode`，系统会自动使用 `instruct` 模式 |
 | `X-Stream-Inference` | string | "False" | 是否启用流式推理（True/False） |
 
 ### 推理模式说明

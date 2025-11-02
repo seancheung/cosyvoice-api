@@ -259,7 +259,15 @@ async def create_speech(
             raise HTTPException(status_code=400, detail="Input text is required")
         
         # Parse mode
-        mode = (x_mode or "zero_shot").lower()
+        # If X-Mode header is set, use it; otherwise auto-detect based on instructions
+        if x_mode:
+            mode = x_mode.lower()
+        elif request.instructions and request.instructions.strip():
+            # Automatically use instruct mode if instructions are provided
+            mode = "instruct"
+        else:
+            mode = "zero_shot"
+        
         if mode not in ["zero_shot", "cross_lingual", "instruct"]:
             raise HTTPException(
                 status_code=400,
