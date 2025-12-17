@@ -23,7 +23,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append('{}/CosyVoice'.format(ROOT_DIR))
 sys.path.append('{}/CosyVoice/third_party/Matcha-TTS'.format(ROOT_DIR))
 
-from CosyVoice.cosyvoice.cli.cosyvoice import CosyVoice, CosyVoice2
+from CosyVoice.cosyvoice.cli.cosyvoice import AutoModel
 from CosyVoice.cosyvoice.utils.file_utils import load_wav
 
 # Initialize FastAPI app
@@ -52,9 +52,9 @@ def setup_cors(app: FastAPI, allow_origins: list = None):
 
 
 # Global model instance (lazy loading)
-cosyvoice_model: Optional[CosyVoice] = None
+cosyvoice_model = None
 VOICES_DIR = Path(__file__).parent / "voices"
-MODEL_DIR = Path(__file__).parent / "CosyVoice" / "pretrained_models" / "CosyVoice2-0.5B"
+MODEL_DIR = Path(__file__).parent / "CosyVoice" / "pretrained_models" / "CosyVoice3-0.5B"
 MAX_VAL = 0.8
 PROMPT_SR = 16000
 
@@ -82,7 +82,7 @@ def postprocess(speech, top_db=60, hop_length=220, win_length=440):
     return speech
 
 
-def get_cosyvoice_model() -> CosyVoice:
+def get_cosyvoice_model():
     """Lazy load CosyVoice model."""
     global cosyvoice_model
     if cosyvoice_model is None:
@@ -91,11 +91,8 @@ def get_cosyvoice_model() -> CosyVoice:
         if not MODEL_DIR.exists():
             raise RuntimeError(f"Model directory not found: {MODEL_DIR}")
         
-        # Check if it's CosyVoice2
-        if 'CosyVoice2' in str(MODEL_DIR):
-            cosyvoice_model = CosyVoice2(str(MODEL_DIR))
-        else:
-            cosyvoice_model = CosyVoice(str(MODEL_DIR))
+        # Use AutoModel to automatically detect model type
+        cosyvoice_model = AutoModel(model_dir=str(MODEL_DIR))
         
         logger.info("CosyVoice model loaded successfully")
     
@@ -292,10 +289,7 @@ async def create_speech(
         # Get model
         model = get_cosyvoice_model()
         
-        # Load and preprocess prompt audio
-        prompt_speech_16k = postprocess(load_wav(prompt_wav_path, PROMPT_SR))
-        
-        # Generate audio based on mode
+        # Generate audio based on mode - pass file path directly
         logger.info(f"Generating audio for voice '{request.voice}': {request.input[:60]}...")
         
         result_audio = None
@@ -305,7 +299,7 @@ async def create_speech(
             for i in model.inference_zero_shot(
                 request.input, 
                 prompt_text, 
-                prompt_speech_16k, 
+                prompt_wav_path, 
                 stream=stream_inference, 
                 speed=request.speed
             ):
@@ -319,7 +313,7 @@ async def create_speech(
             # 跨语种复刻 - Cross-lingual voice cloning
             for i in model.inference_cross_lingual(
                 request.input, 
-                prompt_speech_16k, 
+                prompt_wav_path, 
                 stream=stream_inference, 
                 speed=request.speed
             ):
@@ -337,12 +331,12 @@ async def create_speech(
                     detail="Instructions are required for instruct mode"
                 )
             
-            # Check if model supports instruct2 (CosyVoice2)
+            # Check if model supports instruct2 (CosyVoice2/CosyVoice3)
             if hasattr(model, 'inference_instruct2'):
                 for i in model.inference_instruct2(
                     request.input, 
                     request.instructions, 
-                    prompt_speech_16k, 
+                    prompt_wav_path, 
                     stream=stream_inference, 
                     speed=request.speed
                 ):
@@ -472,7 +466,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CosyVoice OpenAI-Compatible TTS API")
     parser.add_argument("--host", type=str, default=None, help="Host to bind (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=None, help="Port to bind (default: 8000)")
-    parser.add_argument("--model-dir", type=str, default=None, help="Model directory path (default: CosyVoice/pretrained_models/CosyVoice2-0.5B)")
+    parser.add_argument("--model-dir", type=str, default=None, help="Model directory path (default: CosyVoice/pretrained_models/CosyVoice3-0.5B)")
     parser.add_argument("--allow-cors", action="store_true", help="Enable CORS support for cross-origin requests")
     parser.add_argument("--cors-origins", type=str, default="*", help="Comma-separated list of allowed CORS origins (default: *)")
     args = parser.parse_args()

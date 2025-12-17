@@ -43,7 +43,7 @@ logging.getLogger('gradio').setLevel(logging.WARNING)
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append('{}/CosyVoice'.format(ROOT_DIR))
 sys.path.append('{}/CosyVoice/third_party/Matcha-TTS'.format(ROOT_DIR))
-from CosyVoice.cosyvoice.cli.cosyvoice import CosyVoice, CosyVoice2
+from CosyVoice.cosyvoice.cli.cosyvoice import AutoModel
 from CosyVoice.cosyvoice.utils.file_utils import load_wav
 from CosyVoice.cosyvoice.utils.common import set_all_random_seed
 
@@ -219,15 +219,12 @@ def generate_audio(
             seed = random.randint(1, 100000000)
         set_all_random_seed(seed)
         
-        # 加载和预处理提示音频
-        prompt_speech_16k = postprocess(load_wav(prompt_audio, prompt_sr))
-        
         result_audio = None
         
-        # 根据模式进行推理
+        # 根据模式进行推理 - 直接传递音频文件路径
         if mode == '3s极速复刻':
             logging.info('执行零样本推理')
-            for i in cosyvoice.inference_zero_shot(tts_text, prompt_text, prompt_speech_16k, stream=streaming, speed=speed):
+            for i in cosyvoice.inference_zero_shot(tts_text, prompt_text, prompt_audio, stream=streaming, speed=speed):
                 audio = i['tts_speech'].numpy().flatten()
                 if result_audio is None:
                     result_audio = audio
@@ -236,7 +233,7 @@ def generate_audio(
                     
         elif mode == '跨语种复刻':
             logging.info('执行跨语言推理')
-            for i in cosyvoice.inference_cross_lingual(tts_text, prompt_speech_16k, stream=streaming, speed=speed):
+            for i in cosyvoice.inference_cross_lingual(tts_text, prompt_audio, stream=streaming, speed=speed):
                 audio = i['tts_speech'].numpy().flatten()
                 if result_audio is None:
                     result_audio = audio
@@ -245,7 +242,7 @@ def generate_audio(
                     
         elif mode == '自然语言控制':
             logging.info('执行指令推理')
-            for i in cosyvoice.inference_instruct2(tts_text, instruct_text, prompt_speech_16k, stream=streaming, speed=speed):
+            for i in cosyvoice.inference_instruct2(tts_text, instruct_text, prompt_audio, stream=streaming, speed=speed):
                 audio = i['tts_speech'].numpy().flatten()
                 if result_audio is None:
                     result_audio = audio
@@ -330,25 +327,22 @@ def generate_audio_streaming_with_complete(
             seed = random.randint(1, 100000000)
         set_all_random_seed(seed)
         
-        # 加载和预处理提示音频
-        prompt_speech_16k = postprocess(load_wav(prompt_audio, prompt_sr))
-        
         chunk_count = 0
         accumulated_audio = None
         
-        # 根据模式进行流式推理
+        # 根据模式进行流式推理 - 直接传递音频文件路径
         inference_generator = None
         if mode == '3s极速复刻':
             logging.info('执行零样本流式推理')
-            inference_generator = cosyvoice.inference_zero_shot(tts_text, prompt_text, prompt_speech_16k, stream=True, speed=speed)
+            inference_generator = cosyvoice.inference_zero_shot(tts_text, prompt_text, prompt_audio, stream=True, speed=speed)
                     
         elif mode == '跨语种复刻':
             logging.info('执行跨语言流式推理')
-            inference_generator = cosyvoice.inference_cross_lingual(tts_text, prompt_speech_16k, stream=True, speed=speed)
+            inference_generator = cosyvoice.inference_cross_lingual(tts_text, prompt_audio, stream=True, speed=speed)
                     
         elif mode == '自然语言控制':
             logging.info('执行指令流式推理')
-            inference_generator = cosyvoice.inference_instruct2(tts_text, instruct_text, prompt_speech_16k, stream=True, speed=speed)
+            inference_generator = cosyvoice.inference_instruct2(tts_text, instruct_text, prompt_audio, stream=True, speed=speed)
         
         if inference_generator:
             for i in inference_generator:
@@ -639,18 +633,18 @@ def main():
                         type=str,
                         default='127.0.0.1',
                         help='服务主机地址')
-    parser.add_argument('--model_dir',
+    parser.add_argument('--model-dir',
                         type=str,
-                        default='CosyVoice/pretrained_models/CosyVoice2-0.5B',
+                        default='CosyVoice/pretrained_models/CosyVoice3-0.5B',
                         help='模型路径或 modelscope repo id')
-    parser.add_argument('--output_dir',
+    parser.add_argument('--output-dir',
                         type=str,
                         default='outputs',
                         help='音频文件自动保存目录')
     parser.add_argument('--share',
                         action='store_true',
                         help='创建公共分享链接')
-    parser.add_argument('--log_level',
+    parser.add_argument('--log-level',
                         type=str,
                         default='INFO',
                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
@@ -670,7 +664,7 @@ def main():
     # 初始化模型
     print("🔄 正在加载模型...")
     try:
-        cosyvoice = CosyVoice2(args.model_dir) if 'CosyVoice2' in args.model_dir else CosyVoice(args.model_dir)
+        cosyvoice = AutoModel(model_dir=args.model_dir)
         print("✅ 模型加载成功！")
     except Exception as e:
         print(f"❌ 模型加载失败: {e}")

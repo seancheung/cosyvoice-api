@@ -16,7 +16,7 @@
 
 - Python 3.8+
 - CUDA（可选，用于 GPU 加速）
-- 预训练模型：CosyVoice2-0.5B（或其他 CosyVoice 模型）
+- 预训练模型：CosyVoice3-0.5B（或其他 CosyVoice 模型）
 
 ## 安装
 
@@ -36,7 +36,7 @@ pip install fastapi uvicorn soundfile librosa pydantic
 
 ### 3. 下载模型
 
-确保 `CosyVoice/pretrained_models/CosyVoice2-0.5B` 目录下有完整的模型文件。
+确保 `CosyVoice/pretrained_models/CosyVoice3-0.5B` 目录下有完整的模型文件。
 
 ### 4. 准备声音文件
 
@@ -325,8 +325,8 @@ RuntimeError: Model directory not found
 
 **解决方案**：确保模型目录存在且包含所有必要文件
 ```bash
-ls CosyVoice/pretrained_models/CosyVoice2-0.5B/
-# 应该包含: cosyvoice2.yaml, llm.pt, flow.pt, hift.pt 等文件
+ls CosyVoice/pretrained_models/CosyVoice3-0.5B/
+# 应该包含: cosyvoice3.yaml, llm.pt, flow.pt, hift.pt 等文件
 ```
 
 ### 2. 声音文件未找到
@@ -411,7 +411,7 @@ cosyvoice-api/
 ├── CosyVoice/             # CosyVoice 核心库
 │   ├── cosyvoice/
 │   └── pretrained_models/
-│       └── CosyVoice2-0.5B/
+│       └── CosyVoice3-0.5B/
 └── outputs/               # 生成的音频文件（可选）
 ```
 
@@ -432,6 +432,8 @@ cosyvoice-api/
 
 ### v1.0.0
 - ✅ 实现 OpenAI 兼容的 TTS API
+- ✅ 支持 CosyVoice、CosyVoice2 和 CosyVoice3 模型（自动检测）
+- ✅ 默认使用 CosyVoice3-0.5B 模型
 - ✅ 支持零样本、跨语种和指令控制模式
 - ✅ 支持自定义声音
 - ✅ 支持多种音频格式

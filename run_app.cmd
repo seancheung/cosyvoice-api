@@ -10,7 +10,7 @@ set MODELSCOPE_CACHE=%~dp0modelscope
 call install.cmd
 
 @REM run
-call uv run app.py || ( echo. && echo failed to start app && goto :error )
+call uv run app.py --model-dir "CosyVoice/pretrained_models/CosyVoice2-0.5B" || ( echo. && echo failed to start app && goto :error )
 
 :end
 exit /b 0
