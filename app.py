@@ -219,11 +219,18 @@ def generate_audio(
             seed = random.randint(1, 100000000)
         set_all_random_seed(seed)
         
+        # Check if model is CosyVoice3
+        is_v3 = cosyvoice.__class__.__name__ == 'CosyVoice3'
+        
         result_audio = None
         
         # 根据模式进行推理 - 直接传递音频文件路径
         if mode == '3s极速复刻':
             logging.info('执行零样本推理')
+            # Add CosyVoice3 prompt prefix if needed
+            if is_v3 and '<|endofprompt|>' not in prompt_text:
+                prompt_text = "You are a helpful assistant.<|endofprompt|>" + prompt_text
+            
             for i in cosyvoice.inference_zero_shot(tts_text, prompt_text, prompt_audio, stream=streaming, speed=speed):
                 audio = i['tts_speech'].numpy().flatten()
                 if result_audio is None:
@@ -242,6 +249,10 @@ def generate_audio(
                     
         elif mode == '自然语言控制':
             logging.info('执行指令推理')
+            # Add CosyVoice3 prompt format if needed
+            if is_v3 and '<|endofprompt|>' not in instruct_text:
+                instruct_text = "You are a helpful assistant." + instruct_text + "<|endofprompt|>"
+            
             for i in cosyvoice.inference_instruct2(tts_text, instruct_text, prompt_audio, stream=streaming, speed=speed):
                 audio = i['tts_speech'].numpy().flatten()
                 if result_audio is None:
@@ -327,6 +338,9 @@ def generate_audio_streaming_with_complete(
             seed = random.randint(1, 100000000)
         set_all_random_seed(seed)
         
+        # Check if model is CosyVoice3
+        is_v3 = cosyvoice.__class__.__name__ == 'CosyVoice3'
+        
         chunk_count = 0
         accumulated_audio = None
         
@@ -334,6 +348,10 @@ def generate_audio_streaming_with_complete(
         inference_generator = None
         if mode == '3s极速复刻':
             logging.info('执行零样本流式推理')
+            # Add CosyVoice3 prompt prefix if needed
+            if is_v3 and '<|endofprompt|>' not in prompt_text:
+                prompt_text = "You are a helpful assistant.<|endofprompt|>" + prompt_text
+            
             inference_generator = cosyvoice.inference_zero_shot(tts_text, prompt_text, prompt_audio, stream=True, speed=speed)
                     
         elif mode == '跨语种复刻':
@@ -342,6 +360,10 @@ def generate_audio_streaming_with_complete(
                     
         elif mode == '自然语言控制':
             logging.info('执行指令流式推理')
+            # Add CosyVoice3 prompt format if needed
+            if is_v3 and '<|endofprompt|>' not in instruct_text:
+                instruct_text = "You are a helpful assistant." + instruct_text + "<|endofprompt|>"
+            
             inference_generator = cosyvoice.inference_instruct2(tts_text, instruct_text, prompt_audio, stream=True, speed=speed)
         
         if inference_generator:
@@ -664,7 +686,16 @@ def main():
     # 初始化模型
     print("🔄 正在加载模型...")
     try:
-        cosyvoice = AutoModel(model_dir=args.model_dir)
+        # Check if this is CosyVoice3 to disable fp16
+        is_cosyvoice3 = os.path.exists(os.path.join(args.model_dir, 'cosyvoice3.yaml'))
+        
+        # For CosyVoice3, explicitly disable fp16
+        if is_cosyvoice3:
+            print("🔍 检测到 CosyVoice3 模型，禁用 fp16")
+            cosyvoice = AutoModel(model_dir=args.model_dir, fp16=False)
+        else:
+            cosyvoice = AutoModel(model_dir=args.model_dir)
+        
         print("✅ 模型加载成功！")
     except Exception as e:
         print(f"❌ 模型加载失败: {e}")

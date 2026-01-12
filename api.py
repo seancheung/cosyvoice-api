@@ -91,8 +91,16 @@ def get_cosyvoice_model():
         if not MODEL_DIR.exists():
             raise RuntimeError(f"Model directory not found: {MODEL_DIR}")
         
+        # Check if this is CosyVoice3 to disable fp16
+        is_cosyvoice3 = os.path.exists(os.path.join(MODEL_DIR, 'cosyvoice3.yaml'))
+        
         # Use AutoModel to automatically detect model type
-        cosyvoice_model = AutoModel(model_dir=str(MODEL_DIR))
+        # For CosyVoice3, explicitly disable fp16
+        if is_cosyvoice3:
+            logger.info("CosyVoice3 detected, disabling fp16")
+            cosyvoice_model = AutoModel(model_dir=str(MODEL_DIR), fp16=False)
+        else:
+            cosyvoice_model = AutoModel(model_dir=str(MODEL_DIR))
         
         logger.info("CosyVoice model loaded successfully")
     
@@ -288,6 +296,8 @@ async def create_speech(
         
         # Get model
         model = get_cosyvoice_model()
+
+        is_v3 = model.__class__.__name__ == 'CosyVoice3'
         
         # Generate audio based on mode - pass file path directly
         logger.info(f"Generating audio for voice '{request.voice}': {request.input[:60]}...")
@@ -295,6 +305,8 @@ async def create_speech(
         result_audio = None
         
         if mode == "zero_shot":
+            if is_v3 and '<|endofprompt|>' not in prompt_text:
+                prompt_text = "You are a helpful assistant.<|endofprompt|>" + prompt_text
             # 3s极速复刻 - Zero-shot voice cloning
             for i in model.inference_zero_shot(
                 request.input, 
@@ -331,11 +343,15 @@ async def create_speech(
                     detail="Instructions are required for instruct mode"
                 )
             
+            instruct_text = request.instructions
+            if is_v3 and '<|endofprompt|>' not in instruct_text:
+                instruct_text = "You are a helpful assistant." + instruct_text + "<|endofprompt|>"
+            
             # Check if model supports instruct2 (CosyVoice2/CosyVoice3)
             if hasattr(model, 'inference_instruct2'):
                 for i in model.inference_instruct2(
                     request.input, 
-                    request.instructions, 
+                    instruct_text, 
                     prompt_wav_path, 
                     stream=stream_inference, 
                     speed=request.speed

@@ -44,7 +44,7 @@ pip install fastapi uvicorn soundfile librosa pydantic
 
 ```
 voices/
-  ├── voice1.wav     # 音频样本（至少 3 秒，采样率 >= 16kHz）
+  ├── voice1.wav     # 音频样本（至少 3 秒，采样率 >= 16kHz。针对 CosyVoice 3，使用24KHz效果最佳）
   ├── voice1.txt     # 对应的文本内容
   ├── voice2.wav
   └── voice2.txt
